@@ -1,8 +1,8 @@
 from numpy import dot, array
-from math import exp, log, ceil
+from math import exp, log
 import random
 
-EPOCHS = 3
+EPOCHS = 16
 EPSILON = 1e-9
 LEARNING_RATE = 0.1
 
@@ -31,12 +31,12 @@ class LogisticRegression:
         self.theta = theta if theta else [0.1, 0.2]
         self.bias = bias
 
-    def forward(self, X=None, bias=0) -> float:
+    def forward(self, X=None) -> float:
         """Forward pass of the model without activation function, aka linear.
         returns the dot product of the weights and the input features
         X: input features
         bias: bias term"""
-        return dot(self.theta.T, X) + bias
+        return dot(self.theta.T, X) + self.bias
 
     def backward(self, y, y_hat, m=1) -> float:
         """Backward pass of the model, aka backpropagation.
@@ -66,6 +66,7 @@ class LogisticRegression:
         Y: target labels
         epochs: number of iterations
         learning_rate: step size"""
+        m = len(X)
         for epoch in range(EPOCHS):
             for i, x in enumerate(X):
                 # forward pass
@@ -77,10 +78,13 @@ class LogisticRegression:
                 # is not used to update the weights directly
                 loss = loss_func(Y[i], y_hat)
                 # backward pass to calculate the gradients using the error term
-                grads = self.backward(y_hat, Y[i], m=len(X))
+                grads = self.backward(y_hat, Y[i], m=m)
+                # calculate the gradients of the bias term
+                bias_grad = (1 / m) * y_hat - Y[i]
+                self.bias -= learning_rate * bias_grad
                 # update weights
                 self.theta -= learning_rate * grads
-                print(f"Epoch: {epoch}, Loss: {loss}, Error: {loss}")
+                print(f"Epoch: {epoch}, Loss: {loss}, Error: {loss}, bias: {self.bias}")
         return self.theta
 
     def train(self, X, Y, seed=42):
@@ -107,8 +111,8 @@ class LogisticRegression:
 
 def main() -> int:
     # Data
-    X = [[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 1]]
-    Y = [0, 1, 1, 1]
+    X = [[0, 0, 0], [1, 0, 1], [1, 0, 0], [1, 1, 1], [0, 1, 0], [0, 0, 1], [0, 0, 0]]
+    Y = [0, 1, 1, 1, 0, 0, 0]
     X_test = [[0, 0, 1], [0, 1, 1], [1, 1, 1], [1, 1, 0]]
     y_test = [0, 1, 1, 1]
     model = LogisticRegression()
@@ -116,7 +120,7 @@ def main() -> int:
     # Test
     for i, x in enumerate(X_test):
         y_hat, p = model.predict(x)
-        print(f"Prediction: {y_hat}, Ground Truth: {y_test[i]}, prob: {p}")
+        print(f"Pred: {y_hat}, Ground Truth: {y_test[i]}, prob: {p}")
     print(f"Final weights: {theta}")
     return 0
 
