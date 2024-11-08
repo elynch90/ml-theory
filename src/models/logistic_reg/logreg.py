@@ -1,10 +1,10 @@
-from numpy import dot, array
-from math import exp, log
+from numpy import dot, array, exp, log, mean
+from matplotlib import pyplot as plt
 import random
 
-EPOCHS = 16
+EPOCHS = 1024
 EPSILON = 1e-9
-LEARNING_RATE = 0.1
+LEARNING_RATE = 1e-1
 
 
 def sigmoid(z) -> float:
@@ -23,7 +23,9 @@ def loss_func(y, y_hat, epsilon=EPSILON) -> float:
     y_hat: predicted label
     epsilon: small value to prevent log(0)"""
     # binary cross-entropy loss
-    return -y * log(y_hat + epsilon) - (1 - y) * log(1 - y_hat + epsilon)
+    if isinstance(y, (float, int)):
+        return -y * log(y_hat + epsilon) - (1 - y) * log(1 - y_hat + epsilon)
+    return array([-y * log(y_hat + epsilon) - (1 - y) * log(1 - y_hat + epsilon) for y, y_hat in zip(y, y_hat)])
 
 
 class LogisticRegression:
@@ -36,9 +38,9 @@ class LogisticRegression:
         returns the dot product of the weights and the input features
         X: input features
         bias: bias term"""
-        return dot(self.theta.T, X) + self.bias
+        return dot(X, self.theta) + self.bias
 
-    def backward(self, y, y_hat, m=1) -> float:
+    def backward(self, x, y, y_hat, m=1) -> float:
         """Backward pass of the model, aka backpropagation.
         We use the error term and multiply it by the weights to get the
         gradient.
@@ -53,41 +55,67 @@ class LogisticRegression:
         # we can think of this like the forward pass in reverse
         # we are looking to see how the loss changes with respect to the weights
         # aka how the changes in weights contribute to the loss
-        grads = (1 / m) * dot(self.theta, error_term.T)
+        grads = (1 / m) * dot(x.T, error_term)
+        print(f"Gradients: {grads}")
         return grads
 
+    def get_batches(self, X, Y, batch_size=32):
+        batches = []
+        for i in range(0, len(X), batch_size):
+            batch = (X[i:i+batch_size], Y[i:i+batch_size])
+            batches.append(batch)
+        return batches
+
     def stochastic_gradient_descent(
-            self, X, Y, epochs=EPOCHS, learning_rate=LEARNING_RATE):
-        """
-        Stochastic Gradient Descent (SGD) is an optimization algorithm used to
-        minimize some function by iteratively moving in the direction of
+            self, X, Y, batch_size=2**1, epochs=EPOCHS,
+            learning_rate=LEARNING_RATE) -> array:
+        """Stochastic Gradient Descent (SGD) is an optimization algorithm used
+        to minimize some function by iteratively moving in the direction of
         steepest descent as defined by the negative of the gradient.
         X: input features
         Y: target labels
         epochs: number of iterations
         learning_rate: step size"""
-        m = len(X)
-        for epoch in range(EPOCHS):
-            for i, x in enumerate(X):
+        batches = self.get_batches(X, Y, batch_size)
+        losses = []
+        for epoch in range(epochs):
+            # TODO: implement mini-batch gradient descent
+            # instead of using a single sample, we can use a batch of samples
+            # and take advantage of vectorization to speed up the computation
+            batch_losses = []
+            for i, (x_batch, y_batch) in enumerate(batches):
                 # forward pass
-                logit = self.forward(x)
+                logits = self.forward(x_batch)
+                print(f"\nLogits: {logits}")
                 # activation function
-                y_hat = sigmoid(logit)
+                y_hat = sigmoid(logits)
+                # y_hat = [int(i > 0.5) for i in y_hat]
+                print(f"Predictions: {y_hat}")
+                # get the target label (ground truth)
                 # calculate loss
                 # the loss shows how well the model is doing but
                 # is not used to update the weights directly
-                loss = loss_func(Y[i], y_hat)
+                loss = loss_func(y_batch, y_hat)
+                batch_losses.append(sum(loss) / batch_size)
                 # backward pass to calculate the gradients using the error term
-                grads = self.backward(y_hat, Y[i], m=m)
+                grads = self.backward(x_batch, y_batch, y_hat, m=batch_size)
                 # calculate the gradients of the bias term
-                bias_grad = (1 / m) * y_hat - Y[i]
-                self.bias -= learning_rate * bias_grad
+                bias_grad = (1 / batch_size) * sum(y_hat - y_batch)
+                self.bias -= learning_rate * bias_grad / batch_size
                 # update weights
                 self.theta -= learning_rate * grads
-                print(f"Epoch: {epoch}, Loss: {loss}, Error: {loss}, bias: {self.bias}")
+                print(f"Epoch: {epoch}, Loss: {loss}, Error: {loss}, bias: {self.bias}\n")
+            epoch_loss = mean(batch_losses)
+            losses.append(epoch_loss)
+        # plot the loss over the epochs
+        plt.plot(losses, label="avg loss per batch over epochs")
+        plt.xlabel("Epochs")
+        plt.ylabel("Loss")
+        plt.legend()
+        plt.show()
         return self.theta
 
-    def train(self, X, Y, seed=42):
+    def train(self, X, Y, seed=42) -> array:
         """Train the model using the input features and the target labels
         X: input features
         Y: target labels
@@ -96,7 +124,7 @@ class LogisticRegression:
         X = array(X)
         Y = array(Y)
         # ensure n randomized weights for each feature
-        features_n = X.shape[1]
+        features_n = len(X[0])
         self.theta = array([random.random() for _ in range(features_n)])
         # train the model
         self.stochastic_gradient_descent(X, Y)
@@ -106,7 +134,9 @@ class LogisticRegression:
         """Get the output (y-hat) of the model for a given input"""
         logit = self.forward(x)
         prob = sigmoid(logit)
-        return int(prob > 0.5), prob
+        if isinstance(prob, (float, int)):
+            return int(prob > 0.5), prob
+        return array([int(p > 0.5) for p in prob]), prob
 
 
 def main() -> int:
@@ -118,9 +148,10 @@ def main() -> int:
     model = LogisticRegression()
     theta = model.train(X, Y)
     # Test
-    for i, x in enumerate(X_test):
-        y_hat, p = model.predict(x)
-        print(f"Pred: {y_hat}, Ground Truth: {y_test[i]}, prob: {p}")
+    preds, prob = model.predict(X_test)
+    print(f"Predictions: {preds}, Probabilities: {prob}\nground truths: {y_test}")
+    accuracy = sum([1 for i, j in zip(preds, y_test) if i == j]) / len(y_test)
+    print(f"Accuracy: {accuracy}")
     print(f"Final weights: {theta}")
     return 0
 
