@@ -2,7 +2,7 @@ from numpy import dot, array, exp, log, mean
 from matplotlib import pyplot as plt
 import random
 
-EPOCHS = 1024
+EPOCHS = 64
 EPSILON = 1e-9
 LEARNING_RATE = 1e-1
 
@@ -40,23 +40,19 @@ class LogisticRegression:
         bias: bias term"""
         return dot(X, self.theta) + self.bias
 
-    def backward(self, x, y, y_hat, m=1) -> float:
+    def backward(self, x, y, y_hat, m=1) -> np.ndarray:
         """Backward pass of the model, aka backpropagation.
-        We use the error term and multiply it by the weights to get the
-        gradient.
+        Calculates the gradient of the loss with respect to the weights.
         y: target label
         y_hat: predicted label
         m: number of samples in the dataset
         """
-        # calculate the loss (aka error; aka cost)
+        # Calculate the error term
         error_term = y_hat - y
         print(f"Error term: {error_term}")
-        # calculate the gradient of the loss function
-        # we can think of this like the forward pass in reverse
-        # we are looking to see how the loss changes with respect to the weights
-        # aka how the changes in weights contribute to the loss
-        # notice how the error is multiplied by y_hat and (1 - y_hat)
-        #  this is because the derivative of the sigmoid function is y_hat * (1 - y_hat)
+
+        # Calculate the gradient of the loss function
+        # Using the derivative of the sigmoid function: y_hat * (1 - y_hat)
         grads = (1 / m) * dot(x.T, (error_term * y_hat * (1 - y_hat)))
         print(f"Gradients: {grads}")
         return grads
