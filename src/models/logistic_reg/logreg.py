@@ -1,4 +1,4 @@
-from numpy import dot, array, exp, log, mean
+from numpy import dot, array, exp, log, mean, ndarray
 from matplotlib import pyplot as plt
 import random
 
@@ -40,7 +40,7 @@ class LogisticRegression:
         bias: bias term"""
         return dot(X, self.theta) + self.bias
 
-    def backward(self, x, y, y_hat, m=1) -> np.ndarray:
+    def backward(self, x, y, y_hat, m=1) -> ndarray:
         """Backward pass of the model, aka backpropagation.
         Calculates the gradient of the loss with respect to the weights.
         y: target label
