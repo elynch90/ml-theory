@@ -55,7 +55,9 @@ class LogisticRegression:
         # we can think of this like the forward pass in reverse
         # we are looking to see how the loss changes with respect to the weights
         # aka how the changes in weights contribute to the loss
-        grads = (1 / m) * dot(x.T, error_term)
+        # notice how the error is multiplied by y_hat and (1 - y_hat)
+        #  this is because the derivative of the sigmoid function is y_hat * (1 - y_hat)
+        grads = (1 / m) * dot(x.T, (error_term * y_hat * (1 - y_hat)))
         print(f"Gradients: {grads}")
         return grads
 
