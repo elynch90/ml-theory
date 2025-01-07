@@ -2,7 +2,7 @@ from numpy import dot, array, exp, log, mean, ndarray
 from matplotlib import pyplot as plt
 import random
 
-EPOCHS = 64
+EPOCHS = 128
 EPSILON = 1e-9
 LEARNING_RATE = 1e-1
 
@@ -52,7 +52,7 @@ class LogisticRegression:
         print(f"Error term: {error_term}")
 
         # Calculate the gradient of the loss function
-        # Using the derivative of the sigmoid function: y_hat * (1 - y_hat)
+        # Using the derivative of the sigmoid function: sigmoid(dot(X, theta)) * (1 - sigmoid(dot(X, theta)))
         grads = (1 / m) * dot(x.T, (error_term * y_hat * (1 - y_hat)))
         print(f"Gradients: {grads}")
         return grads
@@ -96,7 +96,8 @@ class LogisticRegression:
                 loss = loss_func(y_batch, y_hat)
                 batch_losses.append(sum(loss) / batch_size)
                 # backward pass to calculate the gradients using the error term
-                grads = self.backward(x_batch, y_batch, y_hat, m=batch_size)
+                grads = self.backward(
+                    x_batch, y_batch, y_hat, m=batch_size)
                 # calculate the gradients of the bias term
                 bias_grad = (1 / batch_size) * sum(y_hat - y_batch)
                 self.bias -= learning_rate * bias_grad / batch_size
